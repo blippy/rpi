@@ -2,8 +2,10 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
+#include "logo.h"
 
 extern "C" const uint8_t ssd1306_font6x8[];
+extern "C" const uint8_t splash1_data[];
 
 #define SET_CONTRAST 0x81
 #define SET_ENTIRE_ON 0xA4
@@ -179,7 +181,23 @@ void draw_pixel(int16_t x, int16_t y, int color)
 
 }
 
+void drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w,
+                              int16_t h, uint16_t color) {
 
+  int16_t byteWidth = (w + 7) / 8; // Bitmap scanline pad = whole byte
+  uint8_t byte = 0;
+
+  for (int16_t j = 0; j < h; j++, y++) {
+    for (int16_t i = 0; i < w; i++) {
+      if (i & 7)
+        byte <<= 1;
+      else
+        byte = bitmap[j * byteWidth + i / 8];
+      if (byte & 0x80)
+        draw_pixel(x + i, y, color);
+    }
+  }
+}
 
 void draw_letter_at(u8 x, u8 y, char c)
 {
@@ -235,17 +253,8 @@ int main()
 	init_i2c();
 	init_display();
 
-	ssd1306_print("HELLO PICO\n");
-	ssd1306_print("Written in  C++");
-	show_scr();
-
-	int update = 0;
-	for(int y = height/2; y < height; y++) {
-		for(int x = 0; x < 128; x++) {
-			draw_pixel(x, y, 1);
-			if((update++ % 16) == 0)show_scr();
-		}
-	}
+	drawBitmap(0, 0, splash1_data, 64, 64, 1);
+	
 	show_scr();
 
 	for(;;);
