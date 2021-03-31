@@ -1,10 +1,12 @@
-#include <stdint.h>
+ #include <stdint.h>
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
-
-extern "C" const uint8_t ssd1306_font6x8[];
-// bitmap example data:
+#include "font.h"
+#include <string>
+ 
+ extern "C" const uint8_t ssd1306_font6x8[];
+ // bitmap example data:
 extern "C" const uint8_t splash1_data[] = {
   0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 
   0x00, 0x00, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 
@@ -71,6 +73,10 @@ extern "C" const uint8_t splash1_data[] = {
   0x00, 0xff, 0x03, 0x80, 0x00, 0x00, 0x00, 0x00, 
   0x00, 0x7f, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
+
+
+
+
 #define SET_CONTRAST 0x81
 #define SET_ENTIRE_ON 0xA4
 #define SET_NORM_INV 0xA6
@@ -99,7 +105,7 @@ const u8 width = 128;
 const int pages = height / 8;
 const bool external_vcc = false;
 
-
+int cursorx = 0, cursory = 0;
 u8 scr[pages*width+1]; // extra byte holds data send instruction
 
 void write_cmd(u8 cmd);
@@ -107,6 +113,8 @@ void write_cmd(u8 cmd);
 void fill_scr(u8 v)
 {
 	memset(scr, v, sizeof(scr));
+	cursory=0;
+	cursorx=0;
 }
 
 
@@ -217,10 +225,10 @@ void init_i2c()
 {
 	// This example will use I2C0 on GPIO4 (SDA) and GPIO5 (SCL)
 	i2c_init(I2C_PORT, 100 * 1000);
-	gpio_set_function(4, GPIO_FUNC_I2C);
-	gpio_set_function(5, GPIO_FUNC_I2C);
-	gpio_pull_up(4);
-	gpio_pull_up(5);
+	gpio_set_function(0, GPIO_FUNC_I2C);
+	gpio_set_function(1, GPIO_FUNC_I2C);
+	gpio_pull_up(0);
+	gpio_pull_up(1);
 }
 
 void draw_pixel(int16_t x, int16_t y, int color) 
@@ -294,7 +302,7 @@ void pixel(int x, int y)
 
 }
 
-int cursorx = 0, cursory = 0;
+
 void ssd1306_print(const char* str)
 {
 	char c;
@@ -310,21 +318,28 @@ void ssd1306_print(const char* str)
 	}
 }
 
-
-
-int main()
+void ssd1306_print(const std::string str) //added string support to print
 {
-	init_i2c();
-	init_display();
+	char c;
+	int i=0;
+	while(c = str[i]) {
+		i++;
+		if(c == '\n') {
+			cursorx = 0;
+			cursory += 8;
+			continue;
+		}
+		draw_letter_at(cursorx, cursory, c);
+		cursorx += 8;
+	}
+}
+void setCursorX(int x){
+	int pos=8;
+	cursorx=pos*x;
 
-	ssd1306_print("HELLO PICO...\n"); // demonstrate some text
-	show_scr();
-	sleep_ms(2000);
-	fill_scr(0); // emptry the screen
+}
+void setCursorY(int x){
+	int pos=8;
+	cursory=pos*x;
 
-	drawBitmap(0, 0, splash1_data, 64, 64, 1);
-	show_scr();
-
-	for(;;);
-	return 0;
 }
